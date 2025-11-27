@@ -1,653 +1,632 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2822
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+class BruchverkaufApp {
+    constructor() {
+        this.currentPage = 'dashboard';
+        this.cart = [];
+        this.html5QrCode = null;
+        this.init();
+    }
 
-\f0\fs24 \cf0 class BruchverkaufApp \{\
-    constructor() \{\
-        this.currentPage = 'dashboard';\
-        this.cart = [];\
-        this.html5QrCode = null;\
-        this.init();\
-    \}\
-\
-    async init() \{\
-        // Datenbank initialisieren\
-        await db.init();\
-        \
-        // Event Listeners\
-        this.setupEventListeners();\
-        \
-        // Seiten laden\
-        this.showPage('dashboard');\
-        \
-        // Service Worker registrieren\
-        this.registerServiceWorker();\
-    \}\
-\
-    setupEventListeners() \{\
-        // Navigation\
-        document.querySelectorAll('.back-btn').forEach(btn => \{\
-            btn.addEventListener('click', () => this.showPage('dashboard'));\
-        \});\
-\
-        document.getElementById('scan-btn').addEventListener('click', () => this.showPage('scanner'));\
-        document.getElementById('cart-btn').addEventListener('click', () => this.showPage('cart'));\
-        document.getElementById('articles-btn').addEventListener('click', () => this.showPage('articles'));\
-        document.getElementById('sales-btn').addEventListener('click', () => this.showPage('sales'));\
-        document.getElementById('import-export-btn').addEventListener('click', () => this.showPage('import-export'));\
-\
-        // Scanner\
-        document.getElementById('start-scan').addEventListener('click', () => this.startScanner());\
-        document.getElementById('stop-scan').addEventListener('click', () => this.stopScanner());\
-\
-        // Artikelverwaltung\
-        document.getElementById('add-article-btn').addEventListener('click', () => this.showArticleModal());\
-        document.getElementById('article-search').addEventListener('input', (e) => this.searchArticles(e.target.value));\
-        document.getElementById('article-form').addEventListener('submit', (e) => this.saveArticle(e));\
-        document.getElementById('cancel-article').addEventListener('click', () => this.hideArticleModal());\
-\
-        // Warenkorb\
-        document.getElementById('clear-cart').addEventListener('click', () => this.clearCart());\
-        document.getElementById('checkout-btn').addEventListener('click', () => this.showCheckoutModal());\
-\
-        // Checkout\
-        document.getElementById('checkout-form').addEventListener('submit', (e) => this.completeSale(e));\
-        document.getElementById('cancel-checkout').addEventListener('click', () => this.hideCheckoutModal());\
-\
-        // Import/Export\
-        document.getElementById('export-articles-json').addEventListener('click', () => this.exportArticles('json'));\
-        document.getElementById('export-articles-csv').addEventListener('click', () => this.exportArticles('csv'));\
-        document.getElementById('export-sales').addEventListener('click', () => this.exportSales());\
-        document.getElementById('import-file').addEventListener('change', (e) => this.handleFileSelect(e));\
-        document.getElementById('import-articles').addEventListener('click', () => this.importArticles());\
-    \}\
-\
-    // Navigation\
-    showPage(pageName) \{\
-        // Aktuelle Seite ausblenden\
-        document.querySelectorAll('.page').forEach(page => \{\
-            page.classList.remove('active');\
-        \});\
-\
-        // Spezielle Logik f\'fcr bestimmte Seiten\
-        switch(pageName) \{\
-            case 'scanner':\
-                this.currentPage = 'scanner';\
-                break;\
-            case 'cart':\
-                this.currentPage = 'cart';\
-                this.updateCartDisplay();\
-                break;\
-            case 'articles':\
-                this.currentPage = 'articles';\
-                this.loadArticles();\
-                break;\
-            case 'sales':\
-                this.currentPage = 'sales';\
-                this.loadSales();\
-                break;\
-            case 'import-export':\
-                this.currentPage = 'import-export';\
-                break;\
-            default:\
-                this.currentPage = 'dashboard';\
-                if (this.html5QrCode) \{\
-                    this.stopScanner();\
-                \}\
-        \}\
-\
-        // Neue Seite anzeigen\
-        document.getElementById(pageName).classList.add('active');\
-    \}\
-\
-    // Scanner-Funktionen\
-    async startScanner() \{\
-        try \{\
-            this.html5QrCode = new Html5Qrcode("reader");\
-            \
-            const config = \{\
-                fps: 10,\
-                qrbox: \{ width: 250, height: 150 \}\
-            \};\
-\
-            await this.html5QrCode.start(\
-                \{ facingMode: "environment" \},\
-                config,\
-                (decodedText) => this.onScanSuccess(decodedText),\
-                (errorMessage) => \{\} // Fehler ignorieren\
-            );\
-\
-            document.getElementById('start-scan').disabled = true;\
-            document.getElementById('stop-scan').disabled = false;\
-        \} catch (err) \{\
-            alert('Kamera konnte nicht gestartet werden: ' + err);\
-        \}\
-    \}\
-\
-    async stopScanner() \{\
-        if (this.html5QrCode) \{\
-            await this.html5QrCode.stop();\
-            this.html5QrCode.clear();\
-            this.html5QrCode = null;\
-            \
-            document.getElementById('start-scan').disabled = false;\
-            document.getElementById('stop-scan').disabled = true;\
-            document.getElementById('scan-result').classList.add('hidden');\
-        \}\
-    \}\
-\
-    async onScanSuccess(decodedText) \{\
-        // Scanner kurz pausieren\
-        if (this.html5QrCode) \{\
-            await this.html5QrCode.pause();\
-        \}\
-\
-        const ean = decodedText.trim();\
-        const article = await db.getArticleByEAN(ean);\
-\
-        if (article) \{\
-            // Artikel gefunden - zum Warenkorb hinzuf\'fcgen\
-            this.addToCart(article);\
-            this.showScanResult(`Artikel "$\{article.name\}" zum Warenkorb hinzugef\'fcgt`, false);\
-        \} else \{\
-            // Artikel nicht gefunden - Erstellen anbieten\
-            this.showScanResult(`Artikel mit EAN $\{ean\} nicht gefunden`, true, ean);\
-        \}\
-\
-        // Nach 2 Sekunden weiter scannen\
-        setTimeout(async () => \{\
-            if (this.html5QrCode) \{\
-                await this.html5QrCode.resume();\
-            \}\
-            document.getElementById('scan-result').classList.add('hidden');\
-        \}, 2000);\
-    \}\
-\
-    showScanResult(message, showCreateButton = false, ean = '') \{\
-        const resultElement = document.getElementById('scan-result');\
-        const textElement = document.getElementById('scan-result-text');\
-        const actionsElement = document.getElementById('scan-result-actions');\
-\
-        textElement.textContent = message;\
-        actionsElement.innerHTML = '';\
-\
-        if (showCreateButton) \{\
-            const createBtn = document.createElement('button');\
-            createBtn.className = 'btn primary';\
-            createBtn.textContent = 'Artikel anlegen';\
-            createBtn.addEventListener('click', () => \{\
-                this.showArticleModal(ean);\
-                document.getElementById('scan-result').classList.add('hidden');\
-            \});\
-            actionsElement.appendChild(createBtn);\
-        \}\
-\
-        resultElement.classList.remove('hidden');\
-    \}\
-\
-    // Warenkorb-Funktionen\
-    addToCart(article) \{\
-        const existingItem = this.cart.find(item => item.id === article.id);\
-        \
-        if (existingItem) \{\
-            existingItem.quantity += 1;\
-        \} else \{\
-            this.cart.push(\{\
-                ...article,\
-                quantity: 1\
-            \});\
-        \}\
-        \
-        this.updateCartDisplay();\
-    \}\
-\
-    removeFromCart(articleId) \{\
-        this.cart = this.cart.filter(item => item.id !== articleId);\
-        this.updateCartDisplay();\
-    \}\
-\
-    updateCartDisplay() \{\
-        const cartItemsElement = document.getElementById('cart-items');\
-        const subtotalElement = document.getElementById('subtotal');\
-        const totalElement = document.getElementById('total');\
-        const checkoutBtn = document.getElementById('checkout-btn');\
-\
-        if (this.cart.length === 0) \{\
-            cartItemsElement.innerHTML = '<p class="empty-state">Warenkorb ist leer</p>';\
-            checkoutBtn.disabled = true;\
-        \} else \{\
-            cartItemsElement.innerHTML = this.cart.map(item => `\
-                <div class="cart-item">\
-                    <div class="cart-item-info">\
-                        <div class="cart-item-name">$\{this.escapeHtml(item.name)\}</div>\
-                        <div class="cart-item-details">\
-                            $\{item.quantity\} \'d7 $\{item.price.toFixed(2)\} \'80\
-                        </div>\
-                    </div>\
-                    <div class="cart-item-price">$\{(item.quantity * item.price).toFixed(2)\} \'80</div>\
-                    <div class="cart-item-actions">\
-                        <button class="btn secondary" onclick="app.removeFromCart($\{item.id\})">\uc0\u55357 \u56785 \u65039 </button>\
-                    </div>\
-                </div>\
-            `).join('');\
-            checkoutBtn.disabled = false;\
-        \}\
-\
-        const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);\
-        subtotalElement.textContent = `$\{subtotal.toFixed(2)\} \'80`;\
-        totalElement.textContent = `$\{subtotal.toFixed(2)\} \'80`;\
-    \}\
-\
-    clearCart() \{\
-        this.cart = [];\
-        this.updateCartDisplay();\
-    \}\
-\
-    // Artikelverwaltung\
-    async loadArticles(searchTerm = '') \{\
-        const articles = await db.getAllArticles();\
-        const articlesListElement = document.getElementById('articles-list');\
-        \
-        let filteredArticles = articles;\
-        if (searchTerm) \{\
-            filteredArticles = articles.filter(article => \
-                article.name.toLowerCase().includes(searchTerm.toLowerCase()) ||\
-                article.ean.includes(searchTerm) ||\
-                (article.number && article.number.includes(searchTerm))\
-            );\
-        \}\
-\
-        if (filteredArticles.length === 0) \{\
-            articlesListElement.innerHTML = '<p class="empty-state">Keine Artikel gefunden</p>';\
-        \} else \{\
-            articlesListElement.innerHTML = filteredArticles.map(article => `\
-                <div class="article-item">\
-                    <div class="article-info">\
-                        <div class="article-name">$\{this.escapeHtml(article.name)\}</div>\
-                        <div class="article-details">\
-                            EAN: $\{article.ean\} | $\{article.unit\} | $\{article.price.toFixed(2)\} \'80\
-                            $\{article.number ? `| Art.Nr: $\{article.number\}` : ''\}\
-                        </div>\
-                    </div>\
-                    <div class="article-price">$\{article.price.toFixed(2)\} \'80</div>\
-                    <div class="article-actions">\
-                        <button class="btn secondary" onclick="app.editArticle($\{article.id\})">\uc0\u9999 \u65039 </button>\
-                        <button class="btn secondary" onclick="app.deleteArticle($\{article.id\})">\uc0\u55357 \u56785 \u65039 </button>\
-                    </div>\
-                </div>\
-            `).join('');\
-        \}\
-    \}\
-\
-    searchArticles(term) \{\
-        this.loadArticles(term);\
-    \}\
-\
-    showArticleModal(ean = '') \{\
-        document.getElementById('article-modal-title').textContent = ean ? 'Artikel anlegen' : 'Artikel hinzuf\'fcgen';\
-        document.getElementById('article-id').value = '';\
-        document.getElementById('article-ean').value = ean;\
-        document.getElementById('article-number').value = '';\
-        document.getElementById('article-name').value = '';\
-        document.getElementById('article-unit').value = 'St\'fcck';\
-        document.getElementById('article-price').value = '';\
-        \
-        document.getElementById('article-modal').classList.remove('hidden');\
-    \}\
-\
-    async editArticle(id) \{\
-        const article = await db.getArticle(id);\
-        if (article) \{\
-            document.getElementById('article-modal-title').textContent = 'Artikel bearbeiten';\
-            document.getElementById('article-id').value = article.id;\
-            document.getElementById('article-ean').value = article.ean;\
-            document.getElementById('article-number').value = article.number || '';\
-            document.getElementById('article-name').value = article.name;\
-            document.getElementById('article-unit').value = article.unit;\
-            document.getElementById('article-price').value = article.price;\
-            \
-            document.getElementById('article-modal').classList.remove('hidden');\
-        \}\
-    \}\
-\
-    async saveArticle(event) \{\
-        event.preventDefault();\
-        \
-        const formData = new FormData(event.target);\
-        const id = document.getElementById('article-id').value;\
-        const article = \{\
-            ean: document.getElementById('article-ean').value,\
-            number: document.getElementById('article-number').value || null,\
-            name: document.getElementById('article-name').value,\
-            unit: document.getElementById('article-unit').value,\
-            price: parseFloat(document.getElementById('article-price').value)\
-        \};\
-\
-        try \{\
-            if (id) \{\
-                await db.updateArticle(parseInt(id), article);\
-            \} else \{\
-                await db.addArticle(article);\
-            \}\
-            \
-            this.hideArticleModal();\
-            this.loadArticles();\
-        \} catch (error) \{\
-            alert('Fehler beim Speichern: ' + error.message);\
-        \}\
-    \}\
-\
-    hideArticleModal() \{\
-        document.getElementById('article-modal').classList.add('hidden');\
-        document.getElementById('article-form').reset();\
-    \}\
-\
-    async deleteArticle(id) \{\
-        if (confirm('Artikel wirklich l\'f6schen?')) \{\
-            await db.deleteArticle(id);\
-            this.loadArticles();\
-        \}\
-    \}\
-\
-    // Verkaufshistorie\
-    async loadSales() \{\
-        const sales = await db.getAllSales();\
-        const salesListElement = document.getElementById('sales-list');\
-        \
-        if (sales.length === 0) \{\
-            salesListElement.innerHTML = '<p class="empty-state">Keine Verk\'e4ufe vorhanden</p>';\
-        \} else \{\
-            salesListElement.innerHTML = sales.reverse().map(sale => `\
-                <div class="sale-item">\
-                    <div class="sale-info">\
-                        <div class="article-name">\
-                            $\{new Date(sale.date).toLocaleDateString()\} $\{new Date(sale.date).toLocaleTimeString()\}\
-                        </div>\
-                        <div class="article-details">\
-                            Personalnummer: $\{sale.personalNumber\} | $\{sale.items.length\} Artikel\
-                        </div>\
-                    </div>\
-                    <div class="article-price">$\{sale.total.toFixed(2)\} \'80</div>\
-                </div>\
-            `).join('');\
-        \}\
-    \}\
-\
-    // Checkout\
-    showCheckoutModal() \{\
-        const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);\
-        \
-        document.getElementById('checkout-subtotal').textContent = `$\{subtotal.toFixed(2)\} \'80`;\
-        document.getElementById('checkout-total').textContent = `$\{subtotal.toFixed(2)\} \'80`;\
-        document.getElementById('personal-number').value = '';\
-        \
-        document.getElementById('checkout-modal').classList.remove('hidden');\
-    \}\
-\
-    hideCheckoutModal() \{\
-        document.getElementById('checkout-modal').classList.add('hidden');\
-        document.getElementById('checkout-form').reset();\
-    \}\
-\
-    async completeSale(event) \{\
-        event.preventDefault();\
-        \
-        const personalNumber = document.getElementById('personal-number').value;\
-        const total = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);\
-        \
-        const sale = \{\
-            personalNumber,\
-            items: this.cart.map(item => (\{\
-                id: item.id,\
-                name: item.name,\
-                ean: item.ean,\
-                price: item.price,\
-                quantity: item.quantity\
-            \})),\
-            total\
-        \};\
-\
-        try \{\
-            await db.addSale(sale);\
-            await this.generateReceipt(sale);\
-            this.clearCart();\
-            this.hideCheckoutModal();\
-            this.showPage('dashboard');\
-        \} catch (error) \{\
-            alert('Fehler beim Abschluss: ' + error.message);\
-        \}\
-    \}\
-\
-    async generateReceipt(sale) \{\
-        const \{ jsPDF \} = window.jspdf;\
-        const doc = new jsPDF();\
-        \
-        // Kopfzeile\
-        doc.setFontSize(20);\
-        doc.text('BRUCHVERKAUF', 105, 15, \{ align: 'center' \});\
-        \
-        doc.setFontSize(12);\
-        doc.text(`Datum: $\{new Date().toLocaleDateString()\}`, 20, 30);\
-        doc.text(`Uhrzeit: $\{new Date().toLocaleTimeString()\}`, 20, 38);\
-        doc.text(`Personalnummer: $\{sale.personalNumber\}`, 20, 46);\
-        \
-        // Tabelle\
-        let y = 60;\
-        doc.setFontSize(10);\
-        \
-        // Tabellenkopf\
-        doc.text('Artikel', 20, y);\
-        doc.text('Menge', 120, y);\
-        doc.text('Preis', 150, y);\
-        doc.text('Gesamt', 180, y);\
-        \
-        y += 8;\
-        doc.line(20, y, 190, y);\
-        y += 10;\
-        \
-        // Artikel\
-        sale.items.forEach(item => \{\
-            if (y > 250) \{\
-                doc.addPage();\
-                y = 20;\
-            \}\
-            \
-            doc.text(item.name.substring(0, 40), 20, y);\
-            doc.text(item.quantity.toString(), 120, y);\
-            doc.text(`$\{item.price.toFixed(2)\} \'80`, 150, y);\
-            doc.text(`$\{(item.quantity * item.price).toFixed(2)\} \'80`, 180, y);\
-            y += 8;\
-        \});\
-        \
-        // Gesamtsumme\
-        y += 10;\
-        doc.line(20, y, 190, y);\
-        y += 15;\
-        \
-        doc.setFontSize(12);\
-        doc.text('Gesamtsumme:', 120, y);\
-        doc.text(`$\{sale.total.toFixed(2)\} \'80`, 180, y, \{ align: 'right' \});\
-        \
-        // Speichern\
-        doc.save(`Beleg_$\{sale.personalNumber\}_$\{Date.now()\}.pdf`);\
-    \}\
-\
-    // Import/Export\
-    async exportArticles(format) \{\
-        const articles = await db.exportArticles();\
-        \
-        if (format === 'json') \{\
-            this.downloadFile(\
-                JSON.stringify(articles, null, 2),\
-                'articles.json',\
-                'application/json'\
-            );\
-        \} else if (format === 'csv') \{\
-            const csv = this.convertToCSV(articles);\
-            this.downloadFile(csv, 'articles.csv', 'text/csv');\
-        \}\
-    \}\
-\
-    async exportSales() \{\
-        const sales = await db.exportSales();\
-        this.downloadFile(\
-            JSON.stringify(sales, null, 2),\
-            `sales_$\{new Date().toISOString().split('T')[0]\}.json`,\
-            'application/json'\
-        );\
-    \}\
-\
-    handleFileSelect(event) \{\
-        const file = event.target.files[0];\
-        const importBtn = document.getElementById('import-articles');\
-        \
-        if (file) \{\
-            importBtn.disabled = false;\
-        \}\
-    \}\
-\
-    async importArticles() \{\
-        const fileInput = document.getElementById('import-file');\
-        const file = fileInput.files[0];\
-        const mode = document.querySelector('input[name="import-mode"]:checked').value;\
-        \
-        if (!file) return;\
-\
-        try \{\
-            const content = await this.readFile(file);\
-            let articles;\
-            \
-            if (file.name.endsWith('.json')) \{\
-                articles = JSON.parse(content);\
-            \} else if (file.name.endsWith('.csv')) \{\
-                articles = this.parseCSV(content);\
-            \} else \{\
-                throw new Error('Ung\'fcltiges Dateiformat');\
-            \}\
-            \
-            await db.importArticles(articles, mode);\
-            alert(`Erfolgreich $\{articles.length\} Artikel importiert`);\
-            fileInput.value = '';\
-            document.getElementById('import-articles').disabled = true;\
-            \
-            if (this.currentPage === 'articles') \{\
-                this.loadArticles();\
-            \}\
-        \} catch (error) \{\
-            alert('Fehler beim Import: ' + error.message);\
-        \}\
-    \}\
-\
-    // Hilfsfunktionen\
-    downloadFile(content, fileName, contentType) \{\
-        const blob = new Blob([content], \{ type: contentType \});\
-        const url = URL.createObjectURL(blob);\
-        const a = document.createElement('a');\
-        a.href = url;\
-        a.download = fileName;\
-        document.body.appendChild(a);\
-        a.click();\
-        document.body.removeChild(a);\
-        URL.revokeObjectURL(url);\
-    \}\
-\
-    readFile(file) \{\
-        return new Promise((resolve, reject) => \{\
-            const reader = new FileReader();\
-            reader.onload = e => resolve(e.target.result);\
-            reader.onerror = reject;\
-            reader.readAsText(file);\
-        \});\
-    \}\
-\
-    convertToCSV(articles) \{\
-        const headers = ['ean', 'number', 'name', 'unit', 'price'];\
-        const csv = [\
-            headers.join(','),\
-            ...articles.map(article => headers.map(header => \{\
-                let value = article[header] || '';\
-                // Strings in Anf\'fchrungszeichen setzen wenn n\'f6tig\
-                if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) \{\
-                    value = `"$\{value.replace(/"/g, '""')\}"`;\
-                \}\
-                return value;\
-            \}).join(','))\
-        ];\
-        return csv.join('\\n');\
-    \}\
-\
-    parseCSV(csv) \{\
-        const lines = csv.split('\\n');\
-        const headers = lines[0].split(',').map(h => h.trim());\
-        \
-        return lines.slice(1).filter(line => line.trim()).map(line => \{\
-            const values = this.parseCSVLine(line);\
-            const article = \{\};\
-            \
-            headers.forEach((header, index) => \{\
-                if (values[index] !== undefined) \{\
-                    let value = values[index].trim();\
-                    \
-                    if (header === 'price') \{\
-                        value = parseFloat(value);\
-                    \} else if (header === 'number' && !value) \{\
-                        value = null;\
-                    \}\
-                    \
-                    article[header] = value;\
-                \}\
-            \});\
-            \
-            return article;\
-        \});\
-    \}\
-\
-    parseCSVLine(line) \{\
-        const values = [];\
-        let current = '';\
-        let inQuotes = false;\
-        \
-        for (let i = 0; i < line.length; i++) \{\
-            const char = line[i];\
-            \
-            if (char === '"') \{\
-                inQuotes = !inQuotes;\
-            \} else if (char === ',' && !inQuotes) \{\
-                values.push(current);\
-                current = '';\
-            \} else \{\
-                current += char;\
-            \}\
-        \}\
-        \
-        values.push(current);\
-        return values;\
-    \}\
-\
-    escapeHtml(text) \{\
-        const div = document.createElement('div');\
-        div.textContent = text;\
-        return div.innerHTML;\
-    \}\
-\
-    // Service Worker\
-    async registerServiceWorker() \{\
-        if ('serviceWorker' in navigator) \{\
-            try \{\
-                await navigator.serviceWorker.register('./service-worker.js');\
-                console.log('Service Worker registriert');\
-            \} catch (error) \{\
-                console.log('Service Worker Registrierung fehlgeschlagen:', error);\
-            \}\
-        \}\
-    \}\
-\}\
-\
-// App initialisieren wenn DOM geladen\
-let app;\
-document.addEventListener('DOMContentLoaded', () => \{\
-    app = new BruchverkaufApp();\
-\});}
+    async init() {
+        // Initialize database
+        await db.init();
+        
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        // Load the dashboard
+        this.showPage('dashboard');
+        
+        // Register service worker
+        this.registerServiceWorker();
+    }
+
+    setupEventListeners() {
+        // Navigation
+        document.querySelectorAll('.back-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.showPage('dashboard'));
+        });
+
+        // Main navigation buttons
+        document.getElementById('scan-btn').addEventListener('click', () => this.showPage('scanner'));
+        document.getElementById('cart-btn').addEventListener('click', () => this.showPage('cart'));
+        document.getElementById('articles-btn').addEventListener('click', () => this.showPage('articles'));
+        document.getElementById('sales-btn').addEventListener('click', () => this.showPage('sales'));
+        document.getElementById('import-export-btn').addEventListener('click', () => this.showPage('import-export'));
+
+        // Scanner controls
+        document.getElementById('start-scan').addEventListener('click', () => this.startScanner());
+        document.getElementById('stop-scan').addEventListener('click', () => this.stopScanner());
+
+        // Article management
+        document.getElementById('add-article-btn').addEventListener('click', () => this.showArticleModal());
+        document.getElementById('article-search').addEventListener('input', (e) => this.searchArticles(e.target.value));
+        document.getElementById('article-form').addEventListener('submit', (e) => this.saveArticle(e));
+        document.getElementById('cancel-article').addEventListener('click', () => this.hideArticleModal());
+
+        // Cart functionality
+        document.getElementById('clear-cart').addEventListener('click', () => this.clearCart());
+        document.getElementById('checkout-btn').addEventListener('click', () => this.showCheckoutModal());
+
+        // Checkout process
+        document.getElementById('checkout-form').addEventListener('submit', (e) => this.completeSale(e));
+        document.getElementById('cancel-checkout').addEventListener('click', () => this.hideCheckoutModal());
+
+        // Import/Export
+        document.getElementById('export-articles-json').addEventListener('click', () => this.exportArticles('json'));
+        document.getElementById('export-articles-csv').addEventListener('click', () => this.exportArticles('csv'));
+        document.getElementById('export-sales').addEventListener('click', () => this.exportSales());
+        document.getElementById('import-file').addEventListener('change', (e) => this.handleFileSelect(e));
+        document.getElementById('import-articles').addEventListener('click', () => this.importArticles());
+    }
+
+    // Navigation
+    showPage(pageName) {
+        // Hide all pages
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+
+        // Special handling for specific pages
+        switch(pageName) {
+            case 'scanner':
+                this.currentPage = 'scanner';
+                break;
+            case 'cart':
+                this.currentPage = 'cart';
+                this.updateCartDisplay();
+                break;
+            case 'articles':
+                this.currentPage = 'articles';
+                this.loadArticles();
+                break;
+            case 'sales':
+                this.currentPage = 'sales';
+                this.loadSales();
+                break;
+            case 'import-export':
+                this.currentPage = 'import-export';
+                break;
+            default:
+                this.currentPage = 'dashboard';
+                if (this.html5QrCode) {
+                    this.stopScanner();
+                }
+        }
+
+        // Show the selected page
+        document.getElementById(pageName).classList.add('active');
+    }
+
+    // Scanner functions
+    async startScanner() {
+        try {
+            this.html5QrCode = new Html5Qrcode("reader");
+            
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 150 }
+            };
+
+            await this.html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => this.onScanSuccess(decodedText),
+                (errorMessage) => {} // Ignore errors
+            );
+
+            document.getElementById('start-scan').disabled = true;
+            document.getElementById('stop-scan').disabled = false;
+        } catch (err) {
+            alert('Could not start camera: ' + err);
+        }
+    }
+
+    async stopScanner() {
+        if (this.html5QrCode) {
+            await this.html5QrCode.stop();
+            this.html5QrCode.clear();
+            this.html5QrCode = null;
+            
+            document.getElementById('start-scan').disabled = false;
+            document.getElementById('stop-scan').disabled = true;
+            document.getElementById('scan-result').classList.add('hidden');
+        }
+    }
+
+    async onScanSuccess(decodedText) {
+        // Pause scanner temporarily
+        if (this.html5QrCode) {
+            await this.html5QrCode.pause();
+        }
+
+        const ean = decodedText.trim();
+        const article = await db.getArticleByEAN(ean);
+
+        if (article) {
+            // Article found - add to cart
+            this.addToCart(article);
+            this.showScanResult(`Added "${article.name}" to cart`, false);
+        } else {
+            // Article not found - offer to create it
+            this.showScanResult(`Article with EAN ${ean} not found`, true, ean);
+        }
+
+        // Resume scanning after 2 seconds
+        setTimeout(async () => {
+            if (this.html5QrCode) {
+                await this.html5QrCode.resume();
+            }
+            document.getElementById('scan-result').classList.add('hidden');
+        }, 2000);
+    }
+
+    showScanResult(message, showCreateButton = false, ean = '') {
+        const resultElement = document.getElementById('scan-result');
+        const textElement = document.getElementById('scan-result-text');
+        const actionsElement = document.getElementById('scan-result-actions');
+
+        textElement.textContent = message;
+        actionsElement.innerHTML = '';
+
+        if (showCreateButton) {
+            const createBtn = document.createElement('button');
+            createBtn.className = 'btn primary';
+            createBtn.textContent = 'Create Article';
+            createBtn.addEventListener('click', () => {
+                this.showArticleModal(ean);
+                document.getElementById('scan-result').classList.add('hidden');
+            });
+            actionsElement.appendChild(createBtn);
+        }
+
+        resultElement.classList.remove('hidden');
+    }
+
+    // Cart functions
+    addToCart(article) {
+        const existingItem = this.cart.find(item => item.id === article.id);
+        
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            this.cart.push({
+                ...article,
+                quantity: 1
+            });
+        }
+        
+        this.updateCartDisplay();
+        this.showPage('cart');
+    }
+
+    removeFromCart(articleId) {
+        this.cart = this.cart.filter(item => item.id !== articleId);
+        this.updateCartDisplay();
+    }
+
+    updateCartItemQuantity(articleId, newQuantity) {
+        const item = this.cart.find(item => item.id === articleId);
+        if (item) {
+            item.quantity = Math.max(1, parseInt(newQuantity) || 1);
+            this.updateCartDisplay();
+        }
+    }
+
+    clearCart() {
+        this.cart = [];
+        this.updateCartDisplay();
+    }
+
+    updateCartDisplay() {
+        const cartItemsElement = document.getElementById('cart-items');
+        const subtotalElement = document.getElementById('subtotal');
+        const totalElement = document.getElementById('total');
+        const checkoutButton = document.getElementById('checkout-btn');
+
+        if (this.cart.length === 0) {
+            cartItemsElement.innerHTML = '<p class="empty-state">Cart is empty</p>';
+            subtotalElement.textContent = '0,00 €';
+            totalElement.textContent = '0,00 €';
+            checkoutButton.disabled = true;
+            return;
+        }
+
+        // Calculate totals
+        const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const total = subtotal; // Add tax or other calculations here if needed
+
+        // Update display
+        subtotalElement.textContent = subtotal.toFixed(2) + ' €';
+        totalElement.textContent = total.toFixed(2) + ' €';
+        checkoutButton.disabled = false;
+
+        // Render cart items
+        cartItemsElement.innerHTML = this.cart.map(item => `
+            <div class="cart-item">
+                <div class="cart-item-details">
+                    <h3>${item.name}</h3>
+                    <p>${item.price.toFixed(2)} € × 
+                    <input type="number" min="1" value="${item.quantity}" 
+                           onchange="app.updateCartItemQuantity(${item.id}, this.value)">
+                    ${item.unit}</p>
+                </div>
+                <div class="cart-item-price">
+                    ${(item.price * item.quantity).toFixed(2)} €
+                    <button class="btn-icon" onclick="app.removeFromCart(${item.id})">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Article management
+    async loadArticles(searchTerm = '') {
+        const articles = await db.getAllArticles();
+        const articlesListElement = document.getElementById('articles-list');
+
+        if (!articles || articles.length === 0) {
+            articlesListElement.innerHTML = '<p class="empty-state">No articles found</p>';
+            return;
+        }
+
+        // Filter articles based on search term
+        const filteredArticles = searchTerm 
+            ? articles.filter(article => 
+                article.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (article.ean && article.ean.includes(searchTerm)) ||
+                (article.articleNumber && article.articleNumber.includes(searchTerm))
+              )
+            : articles;
+
+        if (filteredArticles.length === 0) {
+            articlesListElement.innerHTML = '<p class="empty-state">No matching articles found</p>';
+            return;
+        }
+
+        // Render articles
+        articlesListElement.innerHTML = filteredArticles.map(article => `
+            <div class="article-item">
+                <div class="article-info">
+                    <h3>${article.name}</h3>
+                    <p>${article.ean} • ${article.price.toFixed(2)} €/${article.unit}</p>
+                </div>
+                <div class="article-actions">
+                    <button class="btn secondary" onclick="app.addToCart(${JSON.stringify(article).replace(/"/g, '&quot;')})">
+                        Add to Cart
+                    </button>
+                    <button class="btn-icon" onclick="app.editArticle(${article.id})">
+                        ✏️
+                    </button>
+                    <button class="btn-icon danger" onclick="app.deleteArticle(${article.id})">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    showArticleModal(article = null) {
+        const modal = document.getElementById('article-modal');
+        const form = document.getElementById('article-form');
+        const titleElement = document.getElementById('article-modal-title');
+        
+        if (article) {
+            // Edit mode
+            titleElement.textContent = 'Edit Article';
+            document.getElementById('article-id').value = article.id || '';
+            document.getElementById('article-ean').value = article.ean || '';
+            document.getElementById('article-number').value = article.articleNumber || '';
+            document.getElementById('article-name').value = article.name || '';
+            document.getElementById('article-unit').value = article.unit || '';
+            document.getElementById('article-price').value = article.price || '';
+        } else {
+            // Add new article mode
+            titleElement.textContent = 'Add Article';
+            form.reset();
+            if (typeof article === 'string') {
+                // Pre-fill EAN if provided as string
+                document.getElementById('article-ean').value = article;
+            }
+        }
+        
+        modal.classList.remove('hidden');
+    }
+
+    hideArticleModal() {
+        document.getElementById('article-modal').classList.add('hidden');
+    }
+
+    async saveArticle(event) {
+        event.preventDefault();
+        
+        const form = event.target;
+        const id = form.querySelector('#article-id').value;
+        const article = {
+            ean: form.querySelector('#article-ean').value,
+            articleNumber: form.querySelector('#article-number').value,
+            name: form.querySelector('#article-name').value,
+            unit: form.querySelector('#article-unit').value,
+            price: parseFloat(form.querySelector('#article-price').value)
+        };
+
+        try {
+            if (id) {
+                // Update existing article
+                await db.updateArticle(parseInt(id), article);
+            } else {
+                // Add new article
+                await db.addArticle(article);
+            }
+            
+            this.hideArticleModal();
+            this.loadArticles();
+        } catch (error) {
+            console.error('Error saving article:', error);
+            alert('Error saving article: ' + error.message);
+        }
+    }
+
+    async deleteArticle(id) {
+        if (!confirm('Are you sure you want to delete this article?')) {
+            return;
+        }
+        
+        try {
+            await db.deleteArticle(id);
+            this.loadArticles();
+        } catch (error) {
+            console.error('Error deleting article:', error);
+            alert('Error deleting article: ' + error.message);
+        }
+    }
+
+    // Checkout process
+    showCheckoutModal() {
+        document.getElementById('checkout-modal').classList.remove('hidden');
+    }
+
+    hideCheckoutModal() {
+        document.getElementById('checkout-modal').classList.add('hidden');
+    }
+
+    async completeSale(event) {
+        event.preventDefault();
+        
+        const personalNumber = document.getElementById('personal-number').value.trim();
+        if (!personalNumber) {
+            alert('Please enter a personal number');
+            return;
+        }
+
+        if (this.cart.length === 0) {
+            alert('Cart is empty');
+            return;
+        }
+
+        try {
+            const sale = {
+                items: [...this.cart],
+                personalNumber,
+                date: new Date().toISOString(),
+                total: this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+            };
+
+            await db.addSale(sale);
+            
+            // Clear cart and return to dashboard
+            this.clearCart();
+            this.hideCheckoutModal();
+            this.showPage('dashboard');
+            
+            // Show success message
+            alert('Sale completed successfully!');
+        } catch (error) {
+            console.error('Error completing sale:', error);
+            alert('Error completing sale: ' + error.message);
+        }
+    }
+
+    // Import/Export
+    async exportArticles(format = 'json') {
+        try {
+            const articles = await db.exportArticles();
+            let content, filename, mimeType;
+            
+            if (format === 'csv') {
+                // Convert to CSV
+                const headers = ['EAN', 'Article Number', 'Name', 'Unit', 'Price'];
+                const rows = articles.map(article => [
+                    `"${article.ean || ''}"`,
+                    `"${article.articleNumber || ''}"`,
+                    `"${article.name || ''}"`,
+                    `"${article.unit || ''}"`,
+                    article.price || '0.00'
+                ].join(','));
+                
+                content = [headers.join(','), ...rows].join('\n');
+                filename = `articles-${new Date().toISOString().split('T')[0]}.csv`;
+                mimeType = 'text/csv;charset=utf-8;';
+            } else {
+                // Default to JSON
+                content = JSON.stringify(articles, null, 2);
+                filename = `articles-${new Date().toISOString().split('T')[0]}.json`;
+                mimeType = 'application/json;charset=utf-8;';
+            }
+            
+            // Create download link
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error exporting articles:', error);
+            alert('Error exporting articles: ' + error.message);
+        }
+    }
+
+    async exportSales() {
+        try {
+            const sales = await db.exportSales();
+            const content = JSON.stringify(sales, null, 2);
+            const filename = `sales-${new Date().toISOString().split('T')[0]}.json`;
+            
+            // Create download link
+            const blob = new Blob([content], { type: 'application/json;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error exporting sales:', error);
+            alert('Error exporting sales: ' + error.message);
+        }
+    }
+
+    handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = e.target.result;
+                let data;
+                
+                if (file.name.endsWith('.csv')) {
+                    // Parse CSV
+                    const lines = content.split('\n');
+                    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                    data = lines.slice(1)
+                        .filter(line => line.trim() !== '')
+                        .map(line => {
+                            const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                            return headers.reduce((obj, header, i) => {
+                                obj[header] = values[i];
+                                return obj;
+                            }, {});
+                        });
+                } else {
+                    // Parse JSON
+                    data = JSON.parse(content);
+                }
+                
+                // Enable import button and store data
+                const importButton = document.getElementById('import-articles');
+                importButton.disabled = false;
+                importButton.dataset.importData = JSON.stringify(data);
+                
+            } catch (error) {
+                console.error('Error parsing file:', error);
+                alert('Error parsing file: ' + error.message);
+            }
+        };
+        
+        if (file.name.endsWith('.csv')) {
+            reader.readAsText(file);
+        } else {
+            reader.readAsText(file);
+        }
+    }
+
+    async importArticles() {
+        const importButton = document.getElementById('import-articles');
+        const importMode = document.querySelector('input[name="import-mode"]:checked').value;
+        
+        try {
+            const data = JSON.parse(importButton.dataset.importData);
+            if (!Array.isArray(data) || data.length === 0) {
+                throw new Error('No valid data to import');
+            }
+            
+            // Map and validate data
+            const articles = data.map(item => ({
+                ean: item.ean || '',
+                articleNumber: item.articleNumber || item['Article Number'] || '',
+                name: item.name || item.Name || '',
+                unit: item.unit || item.Unit || 'Stk',
+                price: parseFloat(item.price || item.Price || 0)
+            }));
+            
+            // Import to database
+            const count = await db.importArticles(articles, importMode);
+            
+            // Reset form and show success message
+            document.getElementById('import-file').value = '';
+            importButton.disabled = true;
+            delete importButton.dataset.importData;
+            
+            // Reload articles
+            this.loadArticles();
+            
+            alert(`Successfully imported ${count} articles`);
+        } catch (error) {
+            console.error('Error importing articles:', error);
+            alert('Error importing articles: ' + error.message);
+        }
+    }
+
+    // Sales history
+    async loadSales() {
+        const sales = await db.getAllSales();
+        const salesListElement = document.getElementById('sales-list');
+
+        if (!sales || sales.length === 0) {
+            salesListElement.innerHTML = '<p class="empty-state">No sales history available</p>';
+            return;
+        }
+
+        // Group sales by date
+        const salesByDate = sales.reduce((groups, sale) => {
+            const date = new Date(sale.date).toLocaleDateString();
+            if (!groups[date]) {
+                groups[date] = [];
+            }
+            groups[date].push(sale);
+            return groups;
+        }, {});
+
+        // Render sales by date
+        salesListElement.innerHTML = Object.entries(salesByDate).map(([date, dailySales]) => `
+            <div class="sales-day">
+                <h3>${date}</h3>
+                ${dailySales.map(sale => `
+                    <div class="sale-item">
+                        <div class="sale-header">
+                            <span class="sale-time">${new Date(sale.date).toLocaleTimeString()}</span>
+                            <span class="sale-total">${sale.total.toFixed(2)} €</span>
+                        </div>
+                        <div class="sale-details">
+                            <p>Items: ${sale.items.reduce((sum, item) => sum + item.quantity, 0)}</p>
+                            <p>Employee: ${sale.personalNumber}</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    // Service Worker
+    async registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.register('service-worker.js');
+                console.log('ServiceWorker registration successful');
+            } catch (error) {
+                console.error('ServiceWorker registration failed:', error);
+            }
+        }
+    }
+}
+
+// Initialize the app when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new BruchverkaufApp();
+});
