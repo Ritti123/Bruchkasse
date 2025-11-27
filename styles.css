@@ -1,0 +1,346 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 /* Reset und Basis-Styles */\
+* \{\
+    margin: 0;\
+    padding: 0;\
+    box-sizing: border-box;\
+\}\
+\
+body \{\
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\
+    background: #f5f5f5;\
+    color: #333;\
+    line-height: 1.6;\
+\}\
+\
+/* Layout */\
+.page \{\
+    display: none;\
+    min-height: 100vh;\
+\}\
+\
+.page.active \{\
+    display: flex;\
+    flex-direction: column;\
+\}\
+\
+header \{\
+    background: white;\
+    padding: 1rem;\
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\
+    display: flex;\
+    align-items: center;\
+    gap: 1rem;\
+\}\
+\
+header h1 \{\
+    font-size: 1.25rem;\
+    font-weight: 600;\
+    flex: 1;\
+\}\
+\
+.back-btn \{\
+    background: none;\
+    border: none;\
+    font-size: 1rem;\
+    color: #007AFF;\
+    cursor: pointer;\
+\}\
+\
+main \{\
+    flex: 1;\
+    padding: 1rem;\
+    overflow-y: auto;\
+\}\
+\
+/* Dashboard */\
+.dashboard-grid \{\
+    display: grid;\
+    grid-template-columns: 1fr 1fr;\
+    gap: 1rem;\
+    margin-top: 2rem;\
+\}\
+\
+.dashboard-btn \{\
+    background: white;\
+    border: 2px solid #e5e5e5;\
+    border-radius: 12px;\
+    padding: 1.5rem;\
+    display: flex;\
+    flex-direction: column;\
+    align-items: center;\
+    gap: 0.5rem;\
+    cursor: pointer;\
+    transition: all 0.2s;\
+    font-size: 0.9rem;\
+    font-weight: 500;\
+\}\
+\
+.dashboard-btn:hover \{\
+    border-color: #007AFF;\
+    transform: translateY(-2px);\
+\}\
+\
+.dashboard-btn.primary \{\
+    background: #007AFF;\
+    color: white;\
+    border-color: #007AFF;\
+\}\
+\
+.dashboard-btn .icon \{\
+    font-size: 2rem;\
+\}\
+\
+/* Buttons */\
+.btn \{\
+    padding: 0.75rem 1.5rem;\
+    border: none;\
+    border-radius: 8px;\
+    font-size: 1rem;\
+    font-weight: 500;\
+    cursor: pointer;\
+    transition: all 0.2s;\
+    display: inline-flex;\
+    align-items: center;\
+    justify-content: center;\
+    gap: 0.5rem;\
+\}\
+\
+.btn.primary \{\
+    background: #007AFF;\
+    color: white;\
+\}\
+\
+.btn.secondary \{\
+    background: #e5e5e5;\
+    color: #333;\
+\}\
+\
+.btn:disabled \{\
+    opacity: 0.5;\
+    cursor: not-allowed;\
+\}\
+\
+/* Scanner */\
+#reader \{\
+    width: 100%;\
+    max-width: 400px;\
+    margin: 0 auto;\
+    border-radius: 12px;\
+    overflow: hidden;\
+\}\
+\
+.scanner-controls \{\
+    display: flex;\
+    gap: 1rem;\
+    justify-content: center;\
+    margin: 1rem 0;\
+\}\
+\
+#scan-result \{\
+    background: white;\
+    padding: 1rem;\
+    border-radius: 8px;\
+    margin-top: 1rem;\
+    text-align: center;\
+\}\
+\
+.scan-result-actions \{\
+    margin-top: 1rem;\
+    display: flex;\
+    gap: 0.5rem;\
+    justify-content: center;\
+\}\
+\
+/* Listen */\
+.articles-list, .sales-list, .cart-items \{\
+    display: flex;\
+    flex-direction: column;\
+    gap: 0.5rem;\
+\}\
+\
+.article-item, .sale-item, .cart-item \{\
+    background: white;\
+    padding: 1rem;\
+    border-radius: 8px;\
+    display: flex;\
+    justify-content: between;\
+    align-items: center;\
+\}\
+\
+.article-info, .sale-info, .cart-item-info \{\
+    flex: 1;\
+\}\
+\
+.article-name, .cart-item-name \{\
+    font-weight: 500;\
+    margin-bottom: 0.25rem;\
+\}\
+\
+.article-details, .cart-item-details \{\
+    font-size: 0.9rem;\
+    color: #666;\
+\}\
+\
+.article-price, .cart-item-price \{\
+    font-weight: 600;\
+    color: #007AFF;\
+\}\
+\
+.article-actions, .cart-item-actions \{\
+    display: flex;\
+    gap: 0.5rem;\
+\}\
+\
+/* Warenkorb */\
+.cart-summary \{\
+    background: white;\
+    padding: 1rem;\
+    border-radius: 8px;\
+    margin: 1rem 0;\
+\}\
+\
+.summary-row \{\
+    display: flex;\
+    justify-content: space-between;\
+    padding: 0.5rem 0;\
+\}\
+\
+.summary-row.total \{\
+    border-top: 2px solid #e5e5e5;\
+    font-weight: 600;\
+    font-size: 1.1rem;\
+\}\
+\
+.cart-actions \{\
+    display: flex;\
+    flex-direction: column;\
+    gap: 0.5rem;\
+\}\
+\
+/* Formulare */\
+.form-group \{\
+    margin-bottom: 1rem;\
+\}\
+\
+.form-group label \{\
+    display: block;\
+    margin-bottom: 0.5rem;\
+    font-weight: 500;\
+\}\
+\
+.form-group input \{\
+    width: 100%;\
+    padding: 0.75rem;\
+    border: 2px solid #e5e5e5;\
+    border-radius: 8px;\
+    font-size: 1rem;\
+\}\
+\
+.form-group input:focus \{\
+    outline: none;\
+    border-color: #007AFF;\
+\}\
+\
+.form-actions \{\
+    display: flex;\
+    gap: 0.5rem;\
+    justify-content: flex-end;\
+    margin-top: 1.5rem;\
+\}\
+\
+/* Modals */\
+.modal \{\
+    position: fixed;\
+    top: 0;\
+    left: 0;\
+    width: 100%;\
+    height: 100%;\
+    background: rgba(0,0,0,0.5);\
+    display: flex;\
+    align-items: center;\
+    justify-content: center;\
+    z-index: 1000;\
+\}\
+\
+.modal-content \{\
+    background: white;\
+    padding: 2rem;\
+    border-radius: 12px;\
+    width: 90%;\
+    max-width: 500px;\
+    max-height: 90vh;\
+    overflow-y: auto;\
+\}\
+\
+/* Import/Export */\
+.import-export-section \{\
+    background: white;\
+    padding: 1.5rem;\
+    border-radius: 8px;\
+    margin-bottom: 1rem;\
+\}\
+\
+.import-export-section h2 \{\
+    margin-bottom: 1rem;\
+    font-size: 1.1rem;\
+\}\
+\
+.file-input \{\
+    width: 100%;\
+    margin-bottom: 1rem;\
+\}\
+\
+.import-options \{\
+    display: flex;\
+    flex-direction: column;\
+    gap: 0.5rem;\
+    margin-bottom: 1rem;\
+\}\
+\
+.import-options label \{\
+    display: flex;\
+    align-items: center;\
+    gap: 0.5rem;\
+\}\
+\
+/* Hilfsklassen */\
+.hidden \{\
+    display: none !important;\
+\}\
+\
+.empty-state \{\
+    text-align: center;\
+    color: #666;\
+    padding: 2rem;\
+\}\
+\
+.search-bar \{\
+    margin-bottom: 1rem;\
+\}\
+\
+.search-bar input \{\
+    width: 100%;\
+    padding: 0.75rem;\
+    border: 2px solid #e5e5e5;\
+    border-radius: 8px;\
+    font-size: 1rem;\
+\}\
+\
+/* Responsive */\
+@media (max-width: 480px) \{\
+    .dashboard-grid \{\
+        grid-template-columns: 1fr;\
+    \}\
+    \
+    .modal-content \{\
+        margin: 1rem;\
+        padding: 1.5rem;\
+    \}\
+\}}
