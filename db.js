@@ -13,6 +13,7 @@ class Database {
                 if (!db.objectStoreNames.contains('articles')) {
                     const articleStore = db.createObjectStore('articles', { keyPath: 'id', autoIncrement: true });
                     articleStore.createIndex('ean', 'ean', { unique: true });
+                    articleStore.createIndex('articleNumber', 'articleNumber');
                     articleStore.createIndex('name', 'name');
                 }
 
@@ -40,11 +41,32 @@ class Database {
     }
 
     async getArticleByEAN(ean) {
+        if (!ean) return null;
         return await this.db.getFromIndex('articles', 'ean', ean);
+    }
+
+    async getArticleByNumber(articleNumber) {
+        if (!articleNumber) return null;
+        return await this.db.getFromIndex('articles', 'articleNumber', articleNumber);
     }
 
     async getAllArticles() {
         return await this.db.getAll('articles');
+    }
+
+    async searchArticles(query) {
+        if (!query) return [];
+
+        const normalizedQuery = query.toLowerCase().trim();
+        const allArticles = await this.getAllArticles();
+
+        return allArticles.filter(article => {
+            return (
+                (article.name && article.name.toLowerCase().includes(normalizedQuery)) ||
+                (article.ean && article.ean.includes(normalizedQuery)) ||
+                (article.articleNumber && article.articleNumber.toLowerCase().includes(normalizedQuery))
+            );
+        });
     }
 
     async updateArticle(id, updates) {
