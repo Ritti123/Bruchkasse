@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, Plus, X, ShoppingCart, Trash2 } from "lucide-react"
+import { Users, Plus, X, ShoppingCart, Trash2, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,15 +18,14 @@ export interface CustomerCart {
 
 interface MultiCustomerCartProps {
   onCartSelect: (personnelNumber: string, items: CartItem[]) => void
-  onUpdateCart: (personnelNumber: string, items: CartItem[]) => void
+  currentPersonnelNumber?: string
 }
 
-export function MultiCustomerCart({ onCartSelect, onUpdateCart }: MultiCustomerCartProps) {
+export function MultiCustomerCart({ onCartSelect, currentPersonnelNumber }: MultiCustomerCartProps) {
   const [carts, setCarts] = useState<CustomerCart[]>([])
   const [isAddingCart, setIsAddingCart] = useState(false)
   const [newPersonnelNumber, setNewPersonnelNumber] = useState("")
 
-  // Lade Warenkörbe aus localStorage
   useEffect(() => {
     const saved = localStorage.getItem("customer-carts")
     if (saved) {
@@ -38,12 +37,25 @@ export function MultiCustomerCart({ onCartSelect, onUpdateCart }: MultiCustomerC
     }
   }, [])
 
-  // Speichere Warenkörbe in localStorage
   useEffect(() => {
-    if (carts.length > 0) {
-      localStorage.setItem("customer-carts", JSON.stringify(carts))
-    }
+    localStorage.setItem("customer-carts", JSON.stringify(carts))
   }, [carts])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const saved = localStorage.getItem("customer-carts")
+      if (saved) {
+        try {
+          const savedCarts = JSON.parse(saved)
+          setCarts(savedCarts)
+        } catch (error) {
+          // Ignorieren
+        }
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   function handleAddCart() {
     const pn = newPersonnelNumber.trim()
@@ -63,7 +75,10 @@ export function MultiCustomerCart({ onCartSelect, onUpdateCart }: MultiCustomerC
       createdAt: new Date().toISOString(),
     }
 
-    setCarts([...carts, newCart])
+    const updatedCarts = [...carts, newCart]
+    setCarts(updatedCarts)
+    localStorage.setItem("customer-carts", JSON.stringify(updatedCarts))
+
     setNewPersonnelNumber("")
     setIsAddingCart(false)
     onCartSelect(pn, [])
@@ -75,7 +90,9 @@ export function MultiCustomerCart({ onCartSelect, onUpdateCart }: MultiCustomerC
 
   function handleRemoveCart(personnelNumber: string) {
     if (confirm(`Warenkorb für Personalnummer ${personnelNumber} wirklich löschen?`)) {
-      setCarts(carts.filter((c) => c.personnelNumber !== personnelNumber))
+      const updatedCarts = carts.filter((c) => c.personnelNumber !== personnelNumber)
+      setCarts(updatedCarts)
+      localStorage.setItem("customer-carts", JSON.stringify(updatedCarts))
     }
   }
 
@@ -116,38 +133,53 @@ export function MultiCustomerCart({ onCartSelect, onUpdateCart }: MultiCustomerC
         </Card>
       ) : (
         <div className="space-y-2">
-          {carts.map((cart) => (
-            <Card key={cart.personnelNumber} className="cursor-pointer hover:border-primary transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1" onClick={() => handleSelectCart(cart)}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold">Pers.-Nr: {cart.personnelNumber}</p>
-                      {getTotalItems(cart) > 0 && <Badge variant="secondary">{getTotalItems(cart)} Artikel</Badge>}
+          {carts.map((cart) => {
+            const isActive = cart.personnelNumber === currentPersonnelNumber
+
+            return (
+              <Card
+                key={cart.personnelNumber}
+                className={`cursor-pointer transition-all ${
+                  isActive ? "border-primary border-2 shadow-lg" : "hover:border-primary/50"
+                }`}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1" onClick={() => handleSelectCart(cart)}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-semibold">Pers.-Nr: {cart.personnelNumber}</p>
+                        {isActive && (
+                          <Badge variant="default" className="bg-primary">
+                            <Check className="h-3 w-3 mr-1" />
+                            Aktiv
+                          </Badge>
+                        )}
+                        {getTotalItems(cart) > 0 && <Badge variant="secondary">{getTotalItems(cart)} Artikel</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {getTotalItems(cart) === 0 ? (
+                          "Warenkorb leer"
+                        ) : (
+                          <span className="text-emerald-600 font-semibold">{getTotalPrice(cart).toFixed(2)} €</span>
+                        )}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {getTotalItems(cart) === 0 ? (
-                        "Warenkorb leer"
-                      ) : (
-                        <span className="text-emerald-600 font-semibold">{getTotalPrice(cart).toFixed(2)} €</span>
-                      )}
-                    </p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveCart(cart.personnelNumber)
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleRemoveCart(cart.personnelNumber)
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
@@ -159,7 +191,7 @@ export function MultiCustomerCart({ onCartSelect, onUpdateCart }: MultiCustomerC
           onClick={() => {
             if (confirm("Alle Warenkörbe löschen?")) {
               setCarts([])
-              localStorage.removeItem("customer-carts")
+              localStorage.setItem("customer-carts", JSON.stringify([]))
             }
           }}
         >

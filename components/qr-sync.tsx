@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { QrCode, Scan, CheckCircle, AlertCircle, Info } from "lucide-react"
+import { QrCode, Scan, CheckCircle, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -157,14 +157,6 @@ export function QRSync() {
 
   return (
     <div className="space-y-4">
-      {/* Info Card */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          <strong>2025 Sync-Methode:</strong> PC zeigt QR-Codes an, Handy scannt diese. Keine Dateien übertragen nötig!
-        </AlertDescription>
-      </Alert>
-
       {/* Generate QR Codes */}
       <Card>
         <CardHeader>

@@ -40,12 +40,19 @@ export default function BruchKassensystem() {
   }, [])
 
   useEffect(() => {
-    if (currentPersonnelNumber && cartItems.length > 0) {
-      const carts = JSON.parse(localStorage.getItem("customer-carts") || "[]")
-      const cartIndex = carts.findIndex((c: any) => c.personnelNumber === currentPersonnelNumber)
-      if (cartIndex !== -1) {
-        carts[cartIndex].items = cartItems
-        localStorage.setItem("customer-carts", JSON.stringify(carts))
+    if (currentPersonnelNumber && cartItems.length >= 0) {
+      const saved = localStorage.getItem("customer-carts")
+      if (saved) {
+        try {
+          const carts = JSON.parse(saved)
+          const cartIndex = carts.findIndex((c: any) => c.personnelNumber === currentPersonnelNumber)
+          if (cartIndex !== -1) {
+            carts[cartIndex].items = cartItems
+            localStorage.setItem("customer-carts", JSON.stringify(carts))
+          }
+        } catch (error) {
+          console.error("[v0] Fehler beim Speichern des Warenkorbs:", error)
+        }
       }
     }
   }, [cartItems, currentPersonnelNumber])
@@ -82,12 +89,6 @@ export default function BruchKassensystem() {
     setCurrentPersonnelNumber(personnelNumber)
     setCartItems(items)
     setCurrentView("cart")
-  }
-
-  function handleUpdateCart(personnelNumber: string, items: CartItem[]) {
-    if (personnelNumber === currentPersonnelNumber) {
-      setCartItems(items)
-    }
   }
 
   const navItems = [
@@ -143,7 +144,7 @@ export default function BruchKassensystem() {
           />
         )}
         {currentView === "multi-customer" && (
-          <MultiCustomerCart onCartSelect={handleSelectCart} onUpdateCart={handleUpdateCart} />
+          <MultiCustomerCart onCartSelect={handleSelectCart} currentPersonnelNumber={currentPersonnelNumber} />
         )}
         {currentView === "history" && <SalesHistory />}
         {currentView === "qr-sync" && <QRSync />}
