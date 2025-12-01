@@ -85,8 +85,11 @@ export function ArticleManagement() {
       price: Number.parseFloat(formData.price.replace(",", ".")),
     }
 
+    console.log("[v0] Speichere Artikel:", article)
     await saveArticle(article)
+    console.log("[v0] Artikel gespeichert, erstelle Backup...")
     await createActionBackup()
+    console.log("[v0] Backup erstellt")
     setIsDialogOpen(false)
     loadArticles()
   }

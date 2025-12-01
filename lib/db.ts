@@ -211,9 +211,12 @@ export async function createBackup(autoBackup = false): Promise<number> {
 }
 
 export async function createActionBackup(): Promise<void> {
+  console.log("[v0] createActionBackup aufgerufen")
   const database = await getDB()
   const articles = await getAllArticles()
   const sales = await getAllSales()
+
+  console.log("[v0] Backup-Daten geladen:", { artikelAnzahl: articles.length, verkaufsAnzahl: sales.length })
 
   const backup: Omit<Backup, "id"> = {
     date: new Date().toISOString(),
@@ -224,15 +227,19 @@ export async function createActionBackup(): Promise<void> {
 
   // FIFO: Alte Backups bereinigen (nur die letzten 10 behalten)
   const allBackups = await getAllBackups()
+  console.log("[v0] Aktuelle Backup-Anzahl:", allBackups.length)
+
   if (allBackups.length >= 10) {
     // Älteste löschen
     const toDelete = allBackups.slice(9) // Behalte nur 9, damit nach dem neuen Insert 10 da sind
+    console.log("[v0] Lösche", toDelete.length, "alte Backups")
     for (const b of toDelete) {
       if (b.id) await deleteBackup(b.id)
     }
   }
 
-  await database.add("backups", backup as Backup)
+  const backupId = await database.add("backups", backup as Backup)
+  console.log("[v0] Backup erstellt mit ID:", backupId)
 }
 
 export async function getAllBackups(): Promise<Backup[]> {
