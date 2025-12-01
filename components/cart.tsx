@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { saveSale } from "@/lib/db"
+import { saveSale, createActionBackup } from "@/lib/db"
 import { generateReceipt } from "@/lib/pdf"
 import type { CartItem } from "@/types"
 
@@ -58,6 +58,7 @@ export function Cart({ items, onUpdateQuantity, onClearCart, onNavigate, personn
     }
 
     await saveSale(sale)
+    await createActionBackup()
     generateReceipt(sale)
     setIsComplete(true)
   }

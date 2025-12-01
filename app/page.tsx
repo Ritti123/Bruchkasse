@@ -8,7 +8,7 @@ import { Scanner } from "@/components/scanner"
 import { Cart } from "@/components/cart"
 import { SalesHistory } from "@/components/sales-history"
 import { ImportExport } from "@/components/import-export"
-import { BackupManager, useAutoBackup } from "@/components/backup-manager"
+import { BackupManager } from "@/components/backup-manager"
 import { PriceCheck } from "@/components/price-check"
 import { QRSync } from "@/components/qr-sync"
 import { MultiCustomerCart } from "@/components/multi-customer-cart"
@@ -32,8 +32,6 @@ export default function BruchKassensystem() {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [dbReady, setDbReady] = useState(false)
   const [currentPersonnelNumber, setCurrentPersonnelNumber] = useState<string>("")
-
-  useAutoBackup()
 
   useEffect(() => {
     initDB().then(() => setDbReady(true))

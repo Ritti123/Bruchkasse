@@ -39,6 +39,16 @@ export function MultiCustomerCart({ onCartSelect, currentPersonnelNumber }: Mult
 
   useEffect(() => {
     localStorage.setItem("customer-carts", JSON.stringify(carts))
+    // Backup bei Änderungen am Warenkorb erstellen
+    if (carts.length > 0) {
+      // Nur Backup wenn wirklich Änderungen, nicht bei initialem Load
+      const savedCarts = localStorage.getItem("customer-carts")
+      if (savedCarts) {
+        import("@/lib/db").then(({ createActionBackup }) => {
+          createActionBackup().catch(console.error)
+        })
+      }
+    }
   }, [carts])
 
   useEffect(() => {

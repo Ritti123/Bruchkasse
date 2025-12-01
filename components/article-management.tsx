@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { getAllArticles, saveArticle, deleteArticle, searchArticles } from "@/lib/db"
+import { getAllArticles, saveArticle, deleteArticle, searchArticles, createActionBackup } from "@/lib/db"
 import type { Article } from "@/types/article" // Import Article type
 
 interface ArticleFormData {
@@ -86,12 +86,14 @@ export function ArticleManagement() {
     }
 
     await saveArticle(article)
+    await createActionBackup()
     setIsDialogOpen(false)
     loadArticles()
   }
 
   async function handleDelete(ean: string) {
     await deleteArticle(ean)
+    await createActionBackup()
     setDeleteConfirm(null)
     loadArticles()
   }

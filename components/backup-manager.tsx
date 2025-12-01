@@ -1,13 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { Database, Download, Upload, Clock, AlertTriangle, CheckCircle, Trash2, RotateCcw, Shield } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { Download, Upload, Clock, AlertTriangle, CheckCircle, Trash2, RotateCcw, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { createBackup, getAllBackups, deleteBackup, restoreBackup, getLastBackupTime } from "@/lib/db"
 
 interface Backup {
@@ -22,82 +19,8 @@ interface BackupManagerProps {
   onBackupRestored?: () => void
 }
 
-export function useAutoBackup() {
-  const lastBackupTimeRef = useRef<number>(Date.now())
-  const AUTO_BACKUP_INTERVAL = 10 * 60 * 1000 // 10 Minuten
-
-  useEffect(() => {
-    const savedAutoBackup = localStorage.getItem("bruch-auto-backup")
-    const isEnabled = savedAutoBackup !== "false" // Default: aktiviert
-
-    if (!isEnabled) return
-
-    // Beim Start prüfen ob Backup fällig ist
-    const checkAndBackup = async () => {
-      const lastBackupStr = localStorage.getItem("bruch-last-auto-backup")
-      const lastBackup = lastBackupStr ? Number.parseInt(lastBackupStr) : 0
-      const timeSince = Date.now() - lastBackup
-
-      if (timeSince >= AUTO_BACKUP_INTERVAL) {
-        try {
-          await createBackup(true)
-          localStorage.setItem("bruch-last-auto-backup", Date.now().toString())
-          lastBackupTimeRef.current = Date.now()
-        } catch (e) {
-          console.error("Auto-Backup fehlgeschlagen:", e)
-        }
-      }
-    }
-
-    // Sofort beim Laden prüfen
-    checkAndBackup()
-
-    // Regelmäßiges Intervall
-    const interval = setInterval(async () => {
-      try {
-        await createBackup(true)
-        localStorage.setItem("bruch-last-auto-backup", Date.now().toString())
-        lastBackupTimeRef.current = Date.now()
-      } catch (e) {
-        console.error("Auto-Backup fehlgeschlagen:", e)
-      }
-    }, AUTO_BACKUP_INTERVAL)
-
-    // Bei Sichtbarkeitsänderung (Tab wechsel, App wieder öffnen) prüfen
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        checkAndBackup()
-      }
-    }
-    document.addEventListener("visibilitychange", handleVisibility)
-
-    // Bei Schließen/Verlassen der Seite Backup erstellen
-    const handleBeforeUnload = async () => {
-      const lastBackupStr = localStorage.getItem("bruch-last-auto-backup")
-      const lastBackup = lastBackupStr ? Number.parseInt(lastBackupStr) : 0
-      if (Date.now() - lastBackup >= 60000) {
-        // Mindestens 1 Minute seit letztem Backup
-        try {
-          await createBackup(true)
-          localStorage.setItem("bruch-last-auto-backup", Date.now().toString())
-        } catch (e) {
-          // Ignorieren beim Schließen
-        }
-      }
-    }
-    window.addEventListener("beforeunload", handleBeforeUnload)
-
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener("visibilitychange", handleVisibility)
-      window.removeEventListener("beforeunload", handleBeforeUnload)
-    }
-  }, [])
-}
-
 export function BackupManager({ onBackupRestored }: BackupManagerProps) {
   const [backups, setBackups] = useState<Backup[]>([])
-  const [autoBackupEnabled, setAutoBackupEnabled] = useState(true)
   const [lastBackup, setLastBackup] = useState<Date | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [restoreConfirm, setRestoreConfirm] = useState<Backup | null>(null)
@@ -116,23 +39,12 @@ export function BackupManager({ onBackupRestored }: BackupManagerProps) {
 
   useEffect(() => {
     loadBackups()
-
-    const savedAutoBackup = localStorage.getItem("bruch-auto-backup")
-    if (savedAutoBackup !== null) {
-      setAutoBackupEnabled(savedAutoBackup !== "false")
-    }
   }, [loadBackups])
-
-  const handleAutoBackupToggle = (enabled: boolean) => {
-    setAutoBackupEnabled(enabled)
-    localStorage.setItem("bruch-auto-backup", enabled.toString())
-  }
 
   const handleCreateBackup = async () => {
     setIsCreating(true)
     try {
       await createBackup(false)
-      localStorage.setItem("bruch-last-auto-backup", Date.now().toString())
       await loadBackups()
       showNotification("success", "Backup erfolgreich erstellt!")
     } catch (e) {
@@ -193,12 +105,6 @@ export function BackupManager({ onBackupRestored }: BackupManagerProps) {
     return `Vor ${days} Tag${days > 1 ? "en" : ""}`
   }
 
-  const needsBackupWarning = () => {
-    if (!lastBackup) return true
-    const diff = Date.now() - lastBackup.getTime()
-    return diff > 60 * 60 * 1000
-  }
-
   const handleExportBackup = (backup: Backup) => {
     const data = JSON.stringify(backup, null, 2)
     const blob = new Blob([data], { type: "application/json" })
@@ -231,21 +137,18 @@ export function BackupManager({ onBackupRestored }: BackupManagerProps) {
       )}
 
       {/* Backup Status */}
-      <Card className={needsBackupWarning() ? "border-amber-500 bg-amber-50 dark:bg-amber-950" : ""}>
+      <Card className="border-emerald-500 bg-emerald-50 dark:bg-emerald-950">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {needsBackupWarning() ? (
-                <AlertTriangle className="h-8 w-8 text-amber-500" />
-              ) : (
-                <Shield className="h-8 w-8 text-emerald-500" />
-              )}
+              <Shield className="h-8 w-8 text-emerald-500" />
               <div>
-                <p className="font-semibold">{needsBackupWarning() ? "Backup empfohlen" : "Daten gesichert"}</p>
+                <p className="font-semibold">Automatische Backups aktiv</p>
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {getTimeSinceLastBackup()}
                 </p>
+                <p className="text-xs text-muted-foreground mt-1">Backup nach jeder Aktion (max. 10 behalten)</p>
               </div>
             </div>
             <Button onClick={handleCreateBackup} disabled={isCreating} className="bg-emerald-600 hover:bg-emerald-700">
@@ -254,31 +157,10 @@ export function BackupManager({ onBackupRestored }: BackupManagerProps) {
               ) : (
                 <>
                   <Download className="h-5 w-5 mr-2" />
-                  Jetzt sichern
+                  Manuelles Backup
                 </>
               )}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Auto-Backup Settings */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Automatische Backups
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="auto-backup" className="font-medium">
-                Alle 10 Minuten sichern
-              </Label>
-              <p className="text-sm text-muted-foreground">Auch bei Tab-Wechsel und App-Wiederöffnung</p>
-            </div>
-            <Switch id="auto-backup" checked={autoBackupEnabled} onCheckedChange={handleAutoBackupToggle} />
           </div>
         </CardContent>
       </Card>
@@ -288,7 +170,7 @@ export function BackupManager({ onBackupRestored }: BackupManagerProps) {
         <CardHeader>
           <CardTitle className="text-base">Gespeicherte Backups</CardTitle>
           <CardDescription>
-            {backups.length} Backup{backups.length !== 1 ? "s" : ""} vorhanden
+            {backups.length} Backup{backups.length !== 1 ? "s" : ""} vorhanden (max. 10)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 max-h-[400px] overflow-auto">
@@ -300,11 +182,6 @@ export function BackupManager({ onBackupRestored }: BackupManagerProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-sm">{formatDate(backup.date)}</p>
-                    {backup.autoBackup && (
-                      <Badge variant="secondary" className="text-xs">
-                        Auto
-                      </Badge>
-                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {backup.articles.length} Artikel, {backup.sales.length} Verkäufe
